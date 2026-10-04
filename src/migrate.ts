@@ -5,7 +5,7 @@ import { createDatabase } from './database.js';
 
 const migrationsDirectory = fileURLToPath(new URL('../migrations/', import.meta.url));
 
-async function migrate(): Promise<void> {
+export async function migrate(): Promise<void> {
   const { DATABASE_URL } = loadConfig();
   const database = createDatabase(DATABASE_URL);
   const client = await database.connect();
@@ -30,4 +30,6 @@ async function migrate(): Promise<void> {
   }
 }
 
-void migrate();
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  void migrate();
+}

@@ -3,6 +3,7 @@ import { loadConfig, loadPollTargets } from './config.js';
 import { createDatabase } from './database.js';
 import { ResultPoller } from './polling/result-poller.js';
 import { PostgresResultRepository } from './repositories/postgres-result-repository.js';
+import { migrate } from './migrate.js';
 import { ResultService } from './services/result-service.js';
 import { GlobalRequestRateLimiter } from './tse/rate-limiter.js';
 import { TseClient } from './tse/tse-client.js';
@@ -10,6 +11,7 @@ import { SubscriptionHub } from './websocket/subscription-hub.js';
 
 async function start(): Promise<void> {
   const config = loadConfig();
+  await migrate();
   const pollTargets = loadPollTargets(process.env.TSE_POLL_TARGETS);
   const database = createDatabase(config.DATABASE_URL);
   const repository = new PostgresResultRepository(database);
