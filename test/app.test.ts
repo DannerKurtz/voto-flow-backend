@@ -22,6 +22,17 @@ describe('GET /health', () => {
   });
 });
 
+describe('CORS', () => {
+  it('allows the configured frontend origin', async () => {
+    const app = buildApp({ logger: false }, { corsOrigin: 'http://localhost:3001' });
+    apps.push(app);
+
+    const response = await app.inject({ method: 'OPTIONS', url: '/health', headers: { origin: 'http://localhost:3001', 'access-control-request-method': 'GET' } });
+
+    expect(response.headers['access-control-allow-origin']).toBe('http://localhost:3001');
+  });
+});
+
 describe('GET /results/:electionCode/:scopeCode/:officeCode', () => {
   it('returns the current persisted official result', async () => {
     const repository = new InMemoryResultRepository();

@@ -13,6 +13,7 @@ const configSchema = z.object({
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().int().min(1).max(65_535).default(3000),
+  FRONTEND_ORIGIN: z.url().default('http://localhost:3001'),
   TSE_MAX_REQUESTS_PER_SECOND: z.coerce.number().int().min(1).max(10).default(10),
   TSE_POLL_INTERVAL_MS: z.coerce.number().int().min(1_000).default(30_000),
   TSE_TIMEOUT_MS: z.coerce.number().int().min(1_000).max(60_000).default(10_000),

@@ -16,7 +16,7 @@ async function start(): Promise<void> {
   const subscriptionHub = new SubscriptionHub();
   const app = buildApp(
     { logger: { level: config.LOG_LEVEL } },
-    { resultRepository: repository, subscriptionHub },
+    { resultRepository: repository, subscriptionHub, corsOrigin: config.FRONTEND_ORIGIN },
   );
   app.addHook('onClose', async () => database.end());
   const poller = new ResultPoller({

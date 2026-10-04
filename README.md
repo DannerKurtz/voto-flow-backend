@@ -51,6 +51,7 @@ pnpm test
 | `PORT` | `3000` | HTTP listening port. |
 | `LOG_LEVEL` | `info` | Fastify/Pino log level. |
 | `DATABASE_URL` | `postgresql://voto_flow:voto_flow@localhost:5432/voto_flow` | PostgreSQL connection string. |
+| `FRONTEND_ORIGIN` | `http://localhost:3001` | Only browser origin permitted by CORS. |
 | `TSE_MAX_REQUESTS_PER_SECOND` | `10` | Global backend ceiling for TSE requests; accepts values from 1 to 10. |
 | `TSE_TIMEOUT_MS` | `10000` | Per-request TSE HTTP timeout in milliseconds. |
 | `TSE_POLL_INTERVAL_MS` | `30000` | Delay between completed polling cycles. |
