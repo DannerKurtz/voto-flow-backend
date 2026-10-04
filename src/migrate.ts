@@ -7,7 +7,6 @@ const migrationsDirectory = fileURLToPath(new URL('../migrations/', import.meta.
 
 async function migrate(): Promise<void> {
   const { DATABASE_URL } = loadConfig();
-  if (!DATABASE_URL) throw new Error('DATABASE_URL is required to run migrations');
   const database = createDatabase(DATABASE_URL);
   const client = await database.connect();
   try {

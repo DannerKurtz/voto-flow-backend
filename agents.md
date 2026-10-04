@@ -13,12 +13,12 @@ The project progresses only through explicitly authorized phases. Do not start a
 Current status:
 
 - Phase 1 — Official TSE research: completed.
-- Next authorized analysis phase: Phase 2 — Electoral Domain.
-- Backend implementation remains unauthorized until Phase 10 receives explicit approval.
+- Backend implementation is authorized by the project owner.
+- Continue only with documented official TSE contracts; do not infer EA20 fields or JWS cryptographic behavior.
 
 ## Architectural Direction
 
-Use a modular monolith when implementation is authorized. The intended platform is Node.js, TypeScript, Fastify, Zod, PostgreSQL, REST, and WebSocket.
+Use a modular monolith. The intended platform is Node.js, TypeScript, Fastify, Zod, PostgreSQL, REST, and WebSocket.
 
 Keep temporary shared state in process memory and persistent state in PostgreSQL. Do not introduce Redis, brokers, Kafka, RabbitMQ, Kubernetes, microservices, multiple backend instances, or distributed coordination unless a concrete future requirement justifies them.
 
@@ -56,13 +56,12 @@ Validate and normalize official data before persistence. Preserve snapshots only
 
 ## Future Quality Requirements
 
-When implementation is authorized:
+Consult current official documentation for dependencies and the current TSE material for electoral behavior.
 
-- Consult current official documentation for dependencies and the current TSE material for electoral behavior.
 - Use structured Fastify/Pino logs for TSE requests, status, duration, retries, detected changes, snapshots, and WebSocket connection counts.
 - Test parsing, validation, normalization, rate limiting, conditional HTTP behavior, polling, snapshots, and subscriptions with local fixtures rather than live TSE services.
 - Design retries, backoff, timeout handling, cache validation, and JWS verification only after their documented requirements have been confirmed.
-- Treat REST as the future initial-state delivery mechanism and WebSocket as the future update mechanism unless later phases produce a better evidence-based design.
+- Treat REST as the initial-state delivery mechanism and WebSocket as the update mechanism unless later phases produce a better evidence-based design.
 
 ## Change Discipline
 
