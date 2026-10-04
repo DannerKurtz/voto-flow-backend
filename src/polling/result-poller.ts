@@ -13,6 +13,7 @@ export type PollSummary = {
 
 export class ResultPoller {
   private timer: NodeJS.Timeout | undefined;
+  private active = false;
 
   constructor(private readonly options: {
     client: TseClient;
@@ -49,20 +50,22 @@ export class ResultPoller {
   }
 
   start(intervalMs: number): void {
-    if (this.timer) return;
+    if (this.active) return;
+    this.active = true;
     const schedule = async (): Promise<void> => {
       try {
         await this.runOnce();
       } catch (error) {
         this.options.onError?.(error);
       } finally {
-        this.timer = setTimeout(schedule, intervalMs);
+        if (this.active) this.timer = setTimeout(schedule, intervalMs);
       }
     };
     void schedule();
   }
 
   stop(): void {
+    this.active = false;
     if (this.timer) clearTimeout(this.timer);
     this.timer = undefined;
   }
