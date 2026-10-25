@@ -72,7 +72,7 @@ The default credentials are for local development only. To override them, copy t
 
 ## TSE polling
 
-The backend only queries URLs explicitly set in `TSE_POLL_TARGETS`. This avoids hardcoding electoral codes or URLs: derive each target from the official EA11 configuration and TSE documentation for the selected environment before enabling polling.
+The backend only queries URLs explicitly set in `TSE_POLL_TARGETS`. Each URL must use HTTPS and a hostname under `tse.jus.br`. In production, the official simulation host `resultados-sim.tse.jus.br` is rejected; configure only the current official production EA20 URLs obtained from EA11 and TSE documentation. Development may use the official simulator. The backend rejects arbitrary external sources so result data cannot silently come from another provider.
 
 ```dotenv
 TSE_POLL_TARGETS=[{"electionCode":"<official-election-code>","scopeCode":"<official-scope-code>","officeCode":"<official-office-code>","sourceUrl":"<official-ea20-url>"}]

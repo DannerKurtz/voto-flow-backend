@@ -14,7 +14,7 @@ import { SubscriptionHub } from './websocket/subscription-hub.js';
 
 async function start(): Promise<void> {
   const config = loadConfig();
-  const pollTargets = loadPollTargets(process.env.TSE_POLL_TARGETS);
+  const pollTargets = loadPollTargets(process.env.TSE_POLL_TARGETS, { allowSimulation: config.NODE_ENV !== 'production' });
   const secondRoundComparisonConfig = loadSecondRoundComparisonConfig(
     process.env.SECOND_ROUND_COMPARISON_CONFIG,
     pollTargets,

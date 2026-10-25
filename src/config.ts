@@ -4,7 +4,11 @@ const pollTargetSchema = z.object({
   electionCode: z.string().min(1),
   scopeCode: z.string().min(1),
   officeCode: z.string().min(1),
-  sourceUrl: z.url(),
+  sourceUrl: z.url().refine((value) => {
+    const url = new URL(value);
+    return url.protocol === 'https:'
+      && (url.hostname === 'tse.jus.br' || url.hostname.endsWith('.tse.jus.br'));
+  }, 'sourceUrl must use HTTPS on an official TSE domain'),
 });
 
 const comparisonRoundSchema = z.object({
@@ -59,10 +63,17 @@ export type PollTargetConfig = z.infer<typeof pollTargetSchema>;
 export type SecondRoundComparisonConfig = z.infer<typeof secondRoundComparisonSchema>;
 export type GovernorSecondRoundConfig = z.infer<typeof resultIdentitySchema>[];
 
-export function loadPollTargets(value: string | undefined): PollTargetConfig[] {
+export function loadPollTargets(
+  value: string | undefined,
+  options: { allowSimulation?: boolean } = {},
+): PollTargetConfig[] {
   if (!value) return [];
   try {
-    return z.array(pollTargetSchema).parse(JSON.parse(value));
+    const targets = z.array(pollTargetSchema).parse(JSON.parse(value));
+    if (options.allowSimulation === false && targets.some(({ sourceUrl }) => new URL(sourceUrl).hostname === 'resultados-sim.tse.jus.br')) {
+      throw new Error('the official TSE simulation host is not allowed in production');
+    }
+    return targets;
   } catch (error) {
     throw new Error(`TSE_POLL_TARGETS must be a JSON array of result targets: ${error instanceof Error ? error.message : 'invalid value'}`);
   }

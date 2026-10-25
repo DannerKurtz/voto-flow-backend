@@ -4,9 +4,26 @@ import { loadGovernorSecondRoundConfig, loadPollTargets, loadSecondRoundComparis
 
 describe('loadPollTargets', () => {
   it('accepts configured TSE result targets', () => {
-    expect(loadPollTargets('[{"electionCode":"21270","scopeCode":"br","officeCode":"0001","sourceUrl":"https://resultados.example/ea20.json"}]')).toEqual([
-      { electionCode: '21270', scopeCode: 'br', officeCode: '0001', sourceUrl: 'https://resultados.example/ea20.json' },
+    expect(loadPollTargets('[{"electionCode":"21270","scopeCode":"br","officeCode":"0001","sourceUrl":"https://resultados.tse.jus.br/ea20.json"}]')).toEqual([
+      { electionCode: '21270', scopeCode: 'br', officeCode: '0001', sourceUrl: 'https://resultados.tse.jus.br/ea20.json' },
     ]);
+  });
+
+  it('rejects sources outside the official TSE domain', () => {
+    expect(() => loadPollTargets('[{"electionCode":"21270","scopeCode":"br","officeCode":"0001","sourceUrl":"https://example.com/ea20.json"}]')).toThrow('TSE_POLL_TARGETS');
+  });
+
+  it('rejects unencrypted URLs even when the hostname belongs to the TSE', () => {
+    expect(() => loadPollTargets('[{"electionCode":"21270","scopeCode":"br","officeCode":"0001","sourceUrl":"http://resultados.tse.jus.br/ea20.json"}]')).toThrow('TSE_POLL_TARGETS');
+  });
+
+  it('rejects the official simulation host in production', () => {
+    const simulation = '[{"electionCode":"21270","scopeCode":"br","officeCode":"0001","sourceUrl":"https://resultados-sim.tse.jus.br/ea20.json"}]';
+    expect(() => loadPollTargets(simulation, { allowSimulation: false })).toThrow('TSE_POLL_TARGETS');
+  });
+
+  it('allows the official simulation host outside production', () => {
+    expect(loadPollTargets('[{"electionCode":"21270","scopeCode":"br","officeCode":"0001","sourceUrl":"https://resultados-sim.tse.jus.br/ea20.json"}]')).toHaveLength(1);
   });
 
   it('rejects malformed target configuration', () => {
@@ -16,10 +33,10 @@ describe('loadPollTargets', () => {
 
 describe('loadSecondRoundComparisonConfig', () => {
   const targets = loadPollTargets(JSON.stringify([
-    { electionCode: 'first', scopeCode: 'br', officeCode: '0001', sourceUrl: 'https://resultados.example/first-br.json' },
-    { electionCode: 'second', scopeCode: 'br', officeCode: '0001', sourceUrl: 'https://resultados.example/second-br.json' },
-    { electionCode: 'first', scopeCode: 'sp', officeCode: '0001', sourceUrl: 'https://resultados.example/first-sp.json' },
-    { electionCode: 'second', scopeCode: 'sp', officeCode: '0001', sourceUrl: 'https://resultados.example/second-sp.json' },
+    { electionCode: 'first', scopeCode: 'br', officeCode: '0001', sourceUrl: 'https://resultados.tse.jus.br/first-br.json' },
+    { electionCode: 'second', scopeCode: 'br', officeCode: '0001', sourceUrl: 'https://resultados.tse.jus.br/second-br.json' },
+    { electionCode: 'first', scopeCode: 'sp', officeCode: '0001', sourceUrl: 'https://resultados.tse.jus.br/first-sp.json' },
+    { electionCode: 'second', scopeCode: 'sp', officeCode: '0001', sourceUrl: 'https://resultados.tse.jus.br/second-sp.json' },
   ]));
 
   const value = JSON.stringify({
@@ -57,8 +74,8 @@ describe('loadSecondRoundComparisonConfig', () => {
 
 describe('loadGovernorSecondRoundConfig', () => {
   const targets = loadPollTargets(JSON.stringify([
-    { electionCode: 'runoff', scopeCode: 'ac', officeCode: 'governor', sourceUrl: 'https://resultados.example/ac.json' },
-    { electionCode: 'runoff', scopeCode: 'df', officeCode: 'governor', sourceUrl: 'https://resultados.example/df.json' },
+    { electionCode: 'runoff', scopeCode: 'ac', officeCode: 'governor', sourceUrl: 'https://resultados.tse.jus.br/ac.json' },
+    { electionCode: 'runoff', scopeCode: 'df', officeCode: 'governor', sourceUrl: 'https://resultados.tse.jus.br/df.json' },
   ]));
 
   it('accepts only configured runoff target identities', () => {
