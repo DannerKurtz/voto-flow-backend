@@ -12,7 +12,7 @@ const candidateSchema = z.object({
   pvap: officialNumberSchema,
 });
 const ea20Schema = z.object({
-  s: z.object({ pst: officialNumberSchema }),
+  s: z.object({ pst: officialNumberSchema, ts: officialNumberSchema.optional(), st: officialNumberSchema.optional() }),
   v: z.object({ vb: officialNumberSchema, vn: officialNumberSchema }),
   carg: z.array(z.object({
     agr: z.array(z.object({
@@ -34,6 +34,7 @@ export type OfficialCandidate = {
 
 export type NormalizedEa20 = {
   totalizationPercentage: number;
+  sections?: { total: number; totalized: number };
   blankVotes: number;
   nullVotes: number;
   candidates: OfficialCandidate[];
@@ -50,6 +51,7 @@ export type PresidentialComparison = {
   secondRound: {
     electionCode: string;
     totalizationPercentage: number;
+    sections?: { total: number; totalized: number };
     blankVotes: number;
     nullVotes: number;
     candidates: Array<OfficialCandidate & { key: string }>;
@@ -96,6 +98,7 @@ export function buildPresidentialComparison(
     secondRound: {
       electionCode: config.secondRound.electionCode,
       totalizationPercentage: secondRound.totalizationPercentage,
+      ...(secondRound.sections ? { sections: secondRound.sections } : {}),
       blankVotes: secondRound.blankVotes,
       nullVotes: secondRound.nullVotes,
       candidates: secondRoundCandidates,
@@ -113,8 +116,15 @@ export function buildPresidentialComparison(
 
 export function normalizeEa20(payload: unknown): NormalizedEa20 {
   const parsed = ea20Schema.parse(payload);
+  const sections = parsed.s.ts !== undefined && parsed.s.st !== undefined
+    ? { total: parseOfficialNumber(parsed.s.ts), totalized: parseOfficialNumber(parsed.s.st) } : undefined;
+  if (sections && (!Number.isSafeInteger(sections.total) || !Number.isSafeInteger(sections.totalized)
+    || sections.total < 0 || sections.totalized < 0 || sections.totalized > sections.total)) {
+    throw new Error('Invalid official section counts');
+  }
   return {
     totalizationPercentage: parseOfficialNumber(parsed.s.pst),
+    ...(sections ? { sections } : {}),
     blankVotes: parseOfficialNumber(parsed.v.vb),
     nullVotes: parseOfficialNumber(parsed.v.vn),
     candidates: parsed.carg.flatMap((office) => office.agr.flatMap((aggregation) => (

@@ -61,6 +61,10 @@ const comparisonSchema = {
             electionCode: { type: 'string' },
             totalizationPercentage: { type: 'number' },
             blankVotes: { type: 'number' },
+            sections: {
+              type: 'object', required: ['total', 'totalized'],
+              properties: { total: { type: 'integer', minimum: 0 }, totalized: { type: 'integer', minimum: 0 } },
+            },
             nullVotes: { type: 'number' },
             candidates: { type: 'array', items: candidateSchema },
           },

@@ -17,10 +17,11 @@ function ea20(payload: {
   totalization: string;
   blankVotes?: string;
   nullVotes?: string;
+  sections?: { ts: string | number; st: string | number };
   candidates: Array<{ sqcand: string; name: string; ballotName: string; votes: string; percentage: string }>;
 }) {
   return {
-    s: { pst: payload.totalization },
+    s: { pst: payload.totalization, ...payload.sections },
     v: { vb: payload.blankVotes ?? '0', vn: payload.nullVotes ?? '0' },
     carg: [{
       agr: [{
@@ -39,6 +40,15 @@ function ea20(payload: {
 }
 
 describe('buildPresidentialComparison', () => {
+  it('preserves official section totals for zero, partial and completed counts without inventing missing counts', () => {
+    for (const [totalized, totalization] of [[0, '0,00'], [25, '25,00'], [100, '100,00']] as const) {
+      const result = normalizeEa20(ea20({ totalization, candidates: [], sections: { ts: '100', st: totalized } }));
+      expect(result.sections).toEqual({ total: 100, totalized });
+    }
+    expect(normalizeEa20(ea20({ totalization: '10,00', candidates: [] })).sections).toBeUndefined();
+    expect(() => normalizeEa20(ea20({ totalization: '10,00', candidates: [], sections: { ts: 100, st: 101 } }))).toThrow('section counts');
+    expect(() => normalizeEa20(ea20({ totalization: '10,00', candidates: [], sections: { ts: 100, st: -1 } }))).toThrow('section counts');
+  });
   it('associates each candidate with the official party rather than the coalition', () => {
     const candidate = (sqcand: string) => ({ sqcand, nm: sqcand, nmu: sqcand, vap: '100', pvap: '50,00' });
     const result = normalizeEa20({ s: { pst: '10,00' }, v: { vb: '0', vn: '0' },

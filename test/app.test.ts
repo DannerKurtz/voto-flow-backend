@@ -95,7 +95,7 @@ const comparisonConfig: SecondRoundComparisonConfig = {
 };
 
 const comparisonPayload = (candidates: Array<{ sqcand: string; votes: string }>) => ({
-  s: { pst: '20,00' },
+  s: { pst: '20,00', ts: '100', st: '20' },
   v: { vb: '10', vn: '20' },
   carg: [{ agr: [{ par: [{ sg: 'TESTE', cand: candidates.map((candidate) => ({
     sqcand: candidate.sqcand,
@@ -128,7 +128,7 @@ describe('second-round presidential comparison endpoints', () => {
     expect(response.json()).toMatchObject({
       availability: 'ready',
       scope: { code: 'sp', level: 'state' },
-      secondRound: { blankVotes: 10, nullVotes: 20, candidates: [{ party: 'TESTE' }, { party: 'TESTE' }] },
+      secondRound: { blankVotes: 10, nullVotes: 20, sections: { total: 100, totalized: 20 }, candidates: [{ party: 'TESTE' }, { party: 'TESTE' }] },
       estimatedSurplus: { estimated: true, eligible: true },
     });
   });
