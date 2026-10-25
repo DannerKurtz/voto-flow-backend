@@ -4,6 +4,7 @@ import { buildApp } from '../src/app.js';
 import type { SecondRoundComparisonConfig } from '../src/config.js';
 import { InMemoryResultRepository } from '../src/repositories/in-memory-result-repository.js';
 import { PresidentialComparisonService } from '../src/services/presidential-comparison-service.js';
+import { GovernorResultsService } from '../src/services/governor-results-service.js';
 import { ResultService } from '../src/services/result-service.js';
 
 const apps: Array<ReturnType<typeof buildApp>> = [];
@@ -170,5 +171,38 @@ describe('second-round presidential comparison endpoints', () => {
 
     expect(specification.paths).toHaveProperty('/results/second-round/president');
     expect(specification.paths).toHaveProperty('/results/second-round/president/{scopeCode}');
+  });
+});
+
+describe('second-round governor results endpoint', () => {
+  it('lists configured governor states with normalized results and pending states', async () => {
+    const repository = new InMemoryResultRepository();
+    await new ResultService(repository).record({
+      electionCode: 'runoff', scopeCode: 'ac', officeCode: 'governor', sourceUrl: 'https://example.com/ac',
+    }, 'ac', comparisonPayload([{ sqcand: '10', votes: '150' }, { sqcand: '20', votes: '100' }]));
+    const service = new GovernorResultsService(repository, [
+      { electionCode: 'runoff', scopeCode: 'ac', officeCode: 'governor' },
+      { electionCode: 'runoff', scopeCode: 'df', officeCode: 'governor' },
+    ]);
+    const app = buildApp({ logger: false }, { governorResultsService: service });
+    apps.push(app);
+
+    const response = await app.inject({ method: 'GET', url: '/results/second-round/governors' });
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({ results: [
+      { scope: { code: 'ac' }, availability: 'ready', secondRound: { candidates: [{ votes: 150 }, { votes: 100 }] } },
+      { scope: { code: 'df' }, availability: 'pending', secondRound: null },
+    ] });
+  });
+
+  it('adds the governor endpoint to OpenAPI', async () => {
+    const service = new GovernorResultsService(new InMemoryResultRepository(), [
+      { electionCode: 'runoff', scopeCode: 'ac', officeCode: 'governor' },
+    ]);
+    const app = buildApp({ logger: false }, { governorResultsService: service });
+    apps.push(app);
+    const response = await app.inject({ method: 'GET', url: '/documentation/json' });
+    expect(response.json().paths).toHaveProperty('/results/second-round/governors');
+    expect(response.json().paths).toHaveProperty('/results/second-round/governors/{scopeCode}');
   });
 });

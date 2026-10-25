@@ -10,6 +10,13 @@ describe('parseSubscriptionMessage', () => {
     });
   });
 
+  it('accepts a governor runoff subscription by scope', () => {
+    expect(parseSubscriptionMessage(JSON.stringify({ type: 'subscribe.second-round-governor', scopeCode: 'ac' }))).toEqual({
+      success: true,
+      data: { type: 'subscribe.second-round-governor', scopeCode: 'ac' },
+    });
+  });
+
   it('keeps accepting the existing raw-result subscription format', () => {
     expect(parseSubscriptionMessage(JSON.stringify({
       type: 'subscribe', electionCode: '6258', scopeCode: 'sp', officeCode: '0001',

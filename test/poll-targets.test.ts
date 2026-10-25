@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { loadPollTargets, loadSecondRoundComparisonConfig } from '../src/config.js';
+import { loadGovernorSecondRoundConfig, loadPollTargets, loadSecondRoundComparisonConfig } from '../src/config.js';
 
 describe('loadPollTargets', () => {
   it('accepts configured TSE result targets', () => {
@@ -52,5 +52,33 @@ describe('loadSecondRoundComparisonConfig', () => {
     const missingSecondRoundTarget = targets.filter((target) => !(target.scopeCode === 'sp' && target.electionCode === 'second'));
 
     expect(() => loadSecondRoundComparisonConfig(value, missingSecondRoundTarget)).toThrow('SECOND_ROUND_COMPARISON_CONFIG');
+  });
+});
+
+describe('loadGovernorSecondRoundConfig', () => {
+  const targets = loadPollTargets(JSON.stringify([
+    { electionCode: 'runoff', scopeCode: 'ac', officeCode: 'governor', sourceUrl: 'https://resultados.example/ac.json' },
+    { electionCode: 'runoff', scopeCode: 'df', officeCode: 'governor', sourceUrl: 'https://resultados.example/df.json' },
+  ]));
+
+  it('accepts only configured runoff target identities', () => {
+    expect(loadGovernorSecondRoundConfig(JSON.stringify([
+      { electionCode: 'runoff', scopeCode: 'ac', officeCode: 'governor' },
+      { electionCode: 'runoff', scopeCode: 'df', officeCode: 'governor' },
+    ]), targets)).toHaveLength(2);
+  });
+
+  it('rejects identities without a polling target and duplicate scopes', () => {
+    expect(() => loadGovernorSecondRoundConfig(JSON.stringify([
+      { electionCode: 'runoff', scopeCode: 'to', officeCode: 'governor' },
+    ]), targets)).toThrow('GOVERNOR_SECOND_ROUND_TARGETS');
+    expect(() => loadGovernorSecondRoundConfig(JSON.stringify([
+      { electionCode: 'runoff', scopeCode: 'ac', officeCode: 'governor' },
+      { electionCode: 'runoff', scopeCode: 'ac', officeCode: 'governor' },
+    ]), targets)).toThrow('GOVERNOR_SECOND_ROUND_TARGETS');
+    expect(() => loadGovernorSecondRoundConfig(JSON.stringify([
+      { electionCode: 'runoff', scopeCode: 'ac', officeCode: 'governor' },
+      { electionCode: 'other', scopeCode: 'df', officeCode: 'governor' },
+    ]), targets)).toThrow('GOVERNOR_SECOND_ROUND_TARGETS');
   });
 });

@@ -23,7 +23,7 @@ const ea20Schema = z.object({
 
 const estimatedSurplusLabel = 'Outros candidatos, nulos e brancos (estimativa)';
 
-type OfficialCandidate = {
+export type OfficialCandidate = {
   sqcand: string;
   name: string;
   ballotName: string;
@@ -31,7 +31,7 @@ type OfficialCandidate = {
   percentage: number;
 };
 
-type NormalizedEa20 = {
+export type NormalizedEa20 = {
   totalizationPercentage: number;
   blankVotes: number;
   nullVotes: number;
@@ -110,7 +110,7 @@ export function buildPresidentialComparison(
   };
 }
 
-function normalizeEa20(payload: unknown): NormalizedEa20 {
+export function normalizeEa20(payload: unknown): NormalizedEa20 {
   const parsed = ea20Schema.parse(payload);
   return {
     totalizationPercentage: parseOfficialNumber(parsed.s.pst),

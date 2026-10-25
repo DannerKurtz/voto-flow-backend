@@ -15,6 +15,10 @@ const subscribeMessageSchema = z.discriminatedUnion('type', [
     type: z.literal('subscribe.second-round-comparison'),
     scopeCode: z.string().min(1),
   }),
+  z.object({
+    type: z.literal('subscribe.second-round-governor'),
+    scopeCode: z.string().min(1),
+  }),
 ]);
 
 export function parseSubscriptionMessage(message: string) {
@@ -39,6 +43,14 @@ export async function registerWebsocketRoutes(app: FastifyInstance, hub: Subscri
         socket.send(JSON.stringify({
           type: 'subscribed',
           data: { subscription: 'second-round-comparison', scopeCode: subscription.data.scopeCode },
+        }));
+        return;
+      }
+      if (subscription.data.type === 'subscribe.second-round-governor') {
+        hub.subscribeSecondRoundGovernor(socket, subscription.data.scopeCode);
+        socket.send(JSON.stringify({
+          type: 'subscribed',
+          data: { subscription: 'second-round-governor', scopeCode: subscription.data.scopeCode },
         }));
         return;
       }

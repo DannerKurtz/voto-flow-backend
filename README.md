@@ -57,6 +57,7 @@ pnpm test
 | `TSE_POLL_INTERVAL_MS` | `30000` | Delay between completed polling cycles. |
 | `TSE_POLL_TARGETS` | unset | JSON array of EA20 result targets to poll. Unset disables the poller. |
 | `SECOND_ROUND_COMPARISON_CONFIG` | unset | Enables the configured presidential first- and second-round comparison. |
+| `GOVERNOR_SECOND_ROUND_TARGETS` | unset | JSON array of second-round governor result identities; each must match an EA20 target configured in `TSE_POLL_TARGETS`. |
 
 ## PostgreSQL
 
@@ -97,10 +98,18 @@ When configured, the API adds:
 | --- | --- |
 | `GET /results/second-round/president` | Lists the comparison for Brazil and every configured UF. |
 | `GET /results/second-round/president/:scopeCode` | Returns one configured comparison, such as `br` or `sp`. |
+| `GET /results/second-round/governors` | Lists configured state governor runoff results, including pending states. |
+| `GET /results/second-round/governors/:scopeCode` | Returns one configured governor runoff result. |
 
 Each comparison returns official first- and second-round candidate votes and percentages, official second-round blank/null votes, and the official totalization percentage. A scope without both stored EA20 documents returns `availability: "pending"` with no partial comparison.
 
 `estimatedSurplus` is not an official TSE value. It is explicitly marked with `estimated: true` and labelled `Outros candidatos, nulos e brancos (estimativa)`. It remains unavailable until both configured candidates have reached their respective first-round totals in that scope; only then is each positive difference exposed. Official blank and null votes remain separate in `secondRound`.
+
+### Governor runoff bonus
+
+Set `GOVERNOR_SECOND_ROUND_TARGETS` to a JSON array of election/scope/office identities for the governor runoff EA20 documents. Every identity must have a matching entry in `TSE_POLL_TARGETS`; the configuration loader rejects missing or duplicated identities. Configure the official election and office codes from EA11 rather than hardcoding them in the application. The endpoint returns normalized official candidate votes, percentages, blank/null votes, totalization percentage, and pending states. The matching WebSocket subscription is `subscribe.second-round-governor` with a `scopeCode`; changed results arrive as `second-round.governor.updated`.
+
+The 2026 supplemental display can be configured for AC, AM, DF, ES, RN, and TO. Those scopes are supplied through environment configuration, so deployments can omit this optional feature or use a different official target set without changing code.
 
 ## WebSocket protocol
 

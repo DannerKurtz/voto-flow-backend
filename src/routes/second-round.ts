@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 
 import type { PresidentialComparisonService } from '../services/presidential-comparison-service.js';
+import type { GovernorResultsService } from '../services/governor-results-service.js';
 
 const errorResponse = { type: 'object', properties: { message: { type: 'string' } } } as const;
 const candidateSchema = {
@@ -13,6 +14,14 @@ const candidateSchema = {
     ballotName: { type: 'string' },
     votes: { type: 'number' },
     percentage: { type: 'number' },
+  },
+} as const;
+const officialCandidateSchema = {
+  type: 'object',
+  required: ['sqcand', 'name', 'ballotName', 'votes', 'percentage'],
+  properties: {
+    sqcand: { type: 'string' }, name: { type: 'string' }, ballotName: { type: 'string' },
+    votes: { type: 'number' }, percentage: { type: 'number' },
   },
 } as const;
 const comparisonSchema = {
@@ -77,36 +86,83 @@ const comparisonSchema = {
 
 export async function registerSecondRoundRoutes(
   app: FastifyInstance,
-  service: Pick<PresidentialComparisonService, 'list' | 'current'>,
+  dependencies: {
+    presidentialComparisonService?: Pick<PresidentialComparisonService, 'list' | 'current'>;
+    governorResultsService?: Pick<GovernorResultsService, 'list' | 'current'>;
+  },
 ): Promise<void> {
-  app.get('/results/second-round/president', {
-    schema: {
-      tags: ['Second round'],
-      summary: 'List configured presidential first- and second-round comparisons',
-      response: {
-        200: {
-          type: 'object',
-          required: ['results'],
-          properties: { results: { type: 'array', items: comparisonSchema } },
+  const service = dependencies.presidentialComparisonService;
+  const governorService = dependencies.governorResultsService;
+  if (service) {
+    app.get('/results/second-round/president', {
+      schema: {
+        tags: ['Second round'],
+        summary: 'List configured presidential first- and second-round comparisons',
+        response: {
+          200: {
+            type: 'object',
+            required: ['results'],
+            properties: { results: { type: 'array', items: comparisonSchema } },
+          },
         },
       },
-    },
-  }, async () => ({ results: await service.list() }));
+    }, async () => ({ results: await service.list() }));
 
-  app.get<{ Params: { scopeCode: string } }>('/results/second-round/president/:scopeCode', {
-    schema: {
-      tags: ['Second round'],
-      summary: 'Get a presidential first- and second-round comparison for Brazil or one state',
-      params: {
-        type: 'object',
-        required: ['scopeCode'],
-        properties: { scopeCode: { type: 'string', minLength: 1 } },
+    app.get<{ Params: { scopeCode: string } }>('/results/second-round/president/:scopeCode', {
+      schema: {
+        tags: ['Second round'],
+        summary: 'Get a presidential first- and second-round comparison for Brazil or one state',
+        params: {
+          type: 'object',
+          required: ['scopeCode'],
+          properties: { scopeCode: { type: 'string', minLength: 1 } },
+        },
+        response: { 200: comparisonSchema, 404: errorResponse },
       },
-      response: { 200: comparisonSchema, 404: errorResponse },
-    },
-  }, async (request, reply) => {
-    const comparison = await service.current(request.params.scopeCode);
-    if (!comparison) return reply.code(404).send({ message: 'Comparison scope not found' });
-    return comparison;
-  });
+    }, async (request, reply) => {
+      const comparison = await service.current(request.params.scopeCode);
+      if (!comparison) return reply.code(404).send({ message: 'Comparison scope not found' });
+      return comparison;
+    });
+  }
+
+  if (governorService) {
+    const governorResultSchema = {
+      type: 'object',
+      required: ['scope', 'availability', 'secondRound'],
+      properties: {
+        scope: { type: 'object', required: ['code', 'level'], properties: { code: { type: 'string' }, level: { type: 'string', const: 'state' } } },
+        availability: { type: 'string', enum: ['pending', 'ready'] },
+        secondRound: {
+          anyOf: [{ type: 'null' }, {
+            type: 'object', required: ['electionCode', 'totalizationPercentage', 'blankVotes', 'nullVotes', 'candidates'],
+            properties: {
+              electionCode: { type: 'string' }, totalizationPercentage: { type: 'number' },
+              blankVotes: { type: 'number' }, nullVotes: { type: 'number' },
+              candidates: { type: 'array', items: officialCandidateSchema },
+            },
+          }],
+        },
+      },
+    } as const;
+    app.get('/results/second-round/governors', {
+      schema: {
+        tags: ['Second round'],
+        summary: 'List configured state governor runoff results',
+        response: { 200: { type: 'object', required: ['results'], properties: { results: { type: 'array', items: governorResultSchema } } } },
+      },
+    }, async () => ({ results: await governorService.list() }));
+    app.get<{ Params: { scopeCode: string } }>('/results/second-round/governors/:scopeCode', {
+      schema: {
+        tags: ['Second round'],
+        summary: 'Get one configured governor runoff result',
+        params: { type: 'object', required: ['scopeCode'], properties: { scopeCode: { type: 'string', minLength: 1 } } },
+        response: { 200: governorResultSchema, 404: errorResponse },
+      },
+    }, async (request, reply) => {
+      const result = await governorService.current(request.params.scopeCode);
+      if (!result) return reply.code(404).send({ message: 'Governor result scope not found' });
+      return result;
+    });
+  }
 }

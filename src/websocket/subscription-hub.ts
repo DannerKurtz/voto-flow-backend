@@ -14,12 +14,24 @@ export class SubscriptionHub {
     this.subscribeToTopic(socket, this.secondRoundComparisonTopic(scopeCode));
   }
 
+  subscribeSecondRoundGovernor(socket: Socket, scopeCode: string): void {
+    this.subscribeToTopic(socket, this.secondRoundGovernorTopic(scopeCode));
+  }
+
   publishSecondRoundComparison(scopeCode: string, comparison: unknown): void {
     const message = JSON.stringify({
       type: 'second-round.comparison.updated',
       data: { scopeCode, comparison },
     });
     this.broadcast(this.secondRoundComparisonTopic(scopeCode), message);
+  }
+
+  publishSecondRoundGovernor(scopeCode: string, result: unknown): void {
+    const message = JSON.stringify({
+      type: 'second-round.governor.updated',
+      data: { scopeCode, result },
+    });
+    this.broadcast(this.secondRoundGovernorTopic(scopeCode), message);
   }
 
   private subscribeToTopic(socket: Socket, topic: string): void {
@@ -65,5 +77,9 @@ export class SubscriptionHub {
 
   private secondRoundComparisonTopic(scopeCode: string): string {
     return `second-round-comparison:${scopeCode}`;
+  }
+
+  private secondRoundGovernorTopic(scopeCode: string): string {
+    return `second-round-governor:${scopeCode}`;
   }
 }

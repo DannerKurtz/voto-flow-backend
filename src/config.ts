@@ -17,6 +17,11 @@ const comparisonCandidateSchema = z.object({
   firstRoundSqcand: z.string().min(1),
   secondRoundSqcand: z.string().min(1),
 });
+const resultIdentitySchema = z.object({
+  electionCode: z.string().min(1),
+  scopeCode: z.string().min(1),
+  officeCode: z.string().min(1),
+});
 
 const secondRoundComparisonSchema = z.object({
   firstRound: comparisonRoundSchema,
@@ -52,6 +57,7 @@ export function loadConfig(environment: NodeJS.ProcessEnv = process.env): AppCon
 
 export type PollTargetConfig = z.infer<typeof pollTargetSchema>;
 export type SecondRoundComparisonConfig = z.infer<typeof secondRoundComparisonSchema>;
+export type GovernorSecondRoundConfig = z.infer<typeof resultIdentitySchema>[];
 
 export function loadPollTargets(value: string | undefined): PollTargetConfig[] {
   if (!value) return [];
@@ -84,5 +90,29 @@ export function loadSecondRoundComparisonConfig(
     return config;
   } catch (error) {
     throw new Error(`SECOND_ROUND_COMPARISON_CONFIG must describe targets configured in TSE_POLL_TARGETS: ${error instanceof Error ? error.message : 'invalid value'}`);
+  }
+}
+
+export function loadGovernorSecondRoundConfig(
+  value: string | undefined,
+  targets: PollTargetConfig[],
+): GovernorSecondRoundConfig | null {
+  if (!value) return null;
+  try {
+    const identities = z.array(resultIdentitySchema).min(1).parse(JSON.parse(value));
+    const scopes = identities.map(({ scopeCode }) => scopeCode);
+    if (new Set(scopes).size !== scopes.length) throw new Error('scopeCode values must not be duplicated');
+    const first = identities[0];
+    if (identities.some((identity) => identity.electionCode !== first.electionCode || identity.officeCode !== first.officeCode)) {
+      throw new Error('all targets must use the same electionCode and officeCode');
+    }
+    for (const identity of identities) {
+      const exists = targets.some((target) => target.electionCode === identity.electionCode
+        && target.scopeCode === identity.scopeCode && target.officeCode === identity.officeCode);
+      if (!exists) throw new Error(`missing polling target for ${identity.electionCode}/${identity.scopeCode}/${identity.officeCode}`);
+    }
+    return identities;
+  } catch (error) {
+    throw new Error(`GOVERNOR_SECOND_ROUND_TARGETS must list identities backed by TSE_POLL_TARGETS: ${error instanceof Error ? error.message : 'invalid value'}`);
   }
 }

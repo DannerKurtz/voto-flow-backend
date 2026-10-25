@@ -1,12 +1,13 @@
 import { buildApp } from './app.js';
-import { loadConfig, loadPollTargets, loadSecondRoundComparisonConfig } from './config.js';
+import { loadConfig, loadGovernorSecondRoundConfig, loadPollTargets, loadSecondRoundComparisonConfig } from './config.js';
 import { createDatabase } from './database.js';
 import { ResultPoller } from './polling/result-poller.js';
 import { PostgresResultRepository } from './repositories/postgres-result-repository.js';
 import { migrate } from './migrate.js';
 import { ResultService } from './services/result-service.js';
 import { PresidentialComparisonService } from './services/presidential-comparison-service.js';
-import { publishSecondRoundComparisonUpdate } from './second-round/publish-update.js';
+import { GovernorResultsService } from './services/governor-results-service.js';
+import { publishSecondRoundComparisonUpdate, publishSecondRoundGovernorUpdate } from './second-round/publish-update.js';
 import { GlobalRequestRateLimiter } from './tse/rate-limiter.js';
 import { TseClient } from './tse/tse-client.js';
 import { SubscriptionHub } from './websocket/subscription-hub.js';
@@ -18,12 +19,16 @@ async function start(): Promise<void> {
     process.env.SECOND_ROUND_COMPARISON_CONFIG,
     pollTargets,
   );
+  const governorSecondRoundConfig = loadGovernorSecondRoundConfig(process.env.GOVERNOR_SECOND_ROUND_TARGETS, pollTargets);
   await migrate();
   const database = createDatabase(config.DATABASE_URL);
   const repository = new PostgresResultRepository(database);
   const subscriptionHub = new SubscriptionHub();
   const presidentialComparisonService = secondRoundComparisonConfig
     ? new PresidentialComparisonService(repository, secondRoundComparisonConfig)
+    : undefined;
+  const governorResultsService = governorSecondRoundConfig
+    ? new GovernorResultsService(repository, governorSecondRoundConfig)
     : undefined;
   const app = buildApp(
     { logger: { level: config.LOG_LEVEL } },
@@ -32,6 +37,7 @@ async function start(): Promise<void> {
       subscriptionHub,
       corsOrigin: config.FRONTEND_ORIGIN,
       presidentialComparisonService,
+      governorResultsService,
     },
   );
   const poller = new ResultPoller({
@@ -43,8 +49,11 @@ async function start(): Promise<void> {
     subscriptionHub,
     targets: pollTargets,
     onError: (error, target) => app.log.error({ err: error, target }, 'TSE polling failed'),
-    onResultChanged: presidentialComparisonService
-      ? (identity) => publishSecondRoundComparisonUpdate(identity, presidentialComparisonService, subscriptionHub)
+    onResultChanged: presidentialComparisonService || governorResultsService
+      ? async (identity) => {
+        if (presidentialComparisonService) await publishSecondRoundComparisonUpdate(identity, presidentialComparisonService, subscriptionHub);
+        if (governorResultsService) await publishSecondRoundGovernorUpdate(identity, governorResultsService, subscriptionHub);
+      }
       : undefined,
   });
   app.addHook('onClose', async () => {
