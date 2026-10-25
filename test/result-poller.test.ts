@@ -75,4 +75,26 @@ describe('ResultPoller', () => {
 
     expect(onResultChanged).toHaveBeenCalledWith({ electionCode: '21270', scopeCode: 'br', officeCode: '0001' });
   });
+
+  it('does not notify derived views again when the fetched content did not change', async () => {
+    const target = {
+      electionCode: '21270', officeCode: '0001', scopeCode: 'br',
+      sourceUrl: 'https://resultados.example/ea20.json',
+    };
+    const onResultChanged = vi.fn();
+    const poller = new ResultPoller({
+      client: new TseClient({
+        fetcher: async () => new Response('{"totalizado":"10"}', { status: 200 }), timeoutMs: 1_000,
+      }),
+      resultService: new ResultService(new InMemoryResultRepository()),
+      subscriptionHub: new SubscriptionHub(),
+      targets: [target],
+      onResultChanged,
+    });
+
+    await poller.runOnce();
+    await poller.runOnce();
+
+    expect(onResultChanged).toHaveBeenCalledTimes(1);
+  });
 });
