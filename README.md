@@ -56,6 +56,7 @@ pnpm test
 | `TSE_TIMEOUT_MS` | `10000` | Per-request TSE HTTP timeout in milliseconds. |
 | `TSE_POLL_INTERVAL_MS` | `30000` | Delay between completed polling cycles. |
 | `TSE_POLL_TARGETS` | unset | JSON array of EA20 result targets to poll. Unset disables the poller. |
+| `SECOND_ROUND_COMPARISON_CONFIG` | unset | Enables the configured presidential first- and second-round comparison. |
 
 ## PostgreSQL
 
@@ -80,6 +81,27 @@ For every target, the poller reads the stored ETag and Last-Modified value and s
 
 The global in-process limiter is deliberately capped at 10 requests per second across all configured targets. This is a local safety ceiling, not the official TSE limit and not a polling recommendation.
 
+## Presidential comparison: first and second rounds
+
+Set `SECOND_ROUND_COMPARISON_CONFIG` only after setting all matching EA20 targets in `TSE_POLL_TARGETS`. It is intentionally separate from the polling URLs: targets describe transport, while this variable identifies the two rounds, the supported scopes, and the two official candidate IDs.
+
+```dotenv
+SECOND_ROUND_COMPARISON_CONFIG={"firstRound":{"electionCode":"<first-round-election>","officeCode":"<president-office>"},"secondRound":{"electionCode":"<second-round-election>","officeCode":"<president-office>"},"scopes":["br","ac","al","ap","am","ba","ce","df","es","go","ma","mt","ms","mg","pa","pb","pr","pe","pi","rj","rn","rs","ro","rr","sc","sp","se","to"],"candidates":[{"key":"flavio","firstRoundSqcand":"<official-sqcand>","secondRoundSqcand":"<official-sqcand>"},{"key":"lula","firstRoundSqcand":"<official-sqcand>","secondRoundSqcand":"<official-sqcand>"}]}
+```
+
+The process rejects this configuration when any configured scope is missing a first- or second-round EA20 target. Do not guess the EA20 URLs, election codes, office code, or `sqcand` values: obtain them from EA11 and the official EA20 documents. The TSE documents the official 2026 distribution parameters and request limit at [Informações técnicas sobre a divulgação de resultados](https://www.tse.jus.br/eleicoes/informacoes-tecnicas-sobre-a-divulgacao-de-resultados).
+
+When configured, the API adds:
+
+| Endpoint | Purpose |
+| --- | --- |
+| `GET /results/second-round/president` | Lists the comparison for Brazil and every configured UF. |
+| `GET /results/second-round/president/:scopeCode` | Returns one configured comparison, such as `br` or `sp`. |
+
+Each comparison returns official first- and second-round candidate votes and percentages, official second-round blank/null votes, and the official totalization percentage. A scope without both stored EA20 documents returns `availability: "pending"` with no partial comparison.
+
+`estimatedSurplus` is not an official TSE value. It is explicitly marked with `estimated: true` and labelled `Outros candidatos, nulos e brancos (estimativa)`. It remains unavailable until both configured candidates have reached their respective first-round totals in that scope; only then is each positive difference exposed. Official blank and null votes remain separate in `secondRound`.
+
 ## WebSocket protocol
 
 Connect to `ws://localhost:3000/ws`, then subscribe using:
@@ -92,6 +114,18 @@ The server acknowledges with `subscribed`. When that document changes, it sends:
 
 ```json
 {"type":"result.updated","data":{"electionCode":"...","scopeCode":"...","officeCode":"...","sourcePayload":{}}}
+```
+
+For the normalized presidential comparison, subscribe by scope:
+
+```json
+{"type":"subscribe.second-round-comparison","scopeCode":"sp"}
+```
+
+After a matching first- or second-round EA20 update, the server sends:
+
+```json
+{"type":"second-round.comparison.updated","data":{"scopeCode":"sp","comparison":{}}}
 ```
 
 ## Integrity status
