@@ -6,6 +6,7 @@ import { PostgresResultRepository } from './repositories/postgres-result-reposit
 import { migrate } from './migrate.js';
 import { ResultService } from './services/result-service.js';
 import { PresidentialComparisonService } from './services/presidential-comparison-service.js';
+import { PresidentialHistoryService } from './services/presidential-history-service.js';
 import { GovernorResultsService } from './services/governor-results-service.js';
 import { publishSecondRoundComparisonUpdate, publishSecondRoundGovernorUpdate } from './second-round/publish-update.js';
 import { GlobalRequestRateLimiter } from './tse/rate-limiter.js';
@@ -37,6 +38,9 @@ async function start(): Promise<void> {
       subscriptionHub,
       corsOrigin: config.FRONTEND_ORIGIN,
       presidentialComparisonService,
+      presidentialHistoryService: secondRoundComparisonConfig
+        ? new PresidentialHistoryService(repository, secondRoundComparisonConfig)
+        : undefined,
       governorResultsService,
     },
   );

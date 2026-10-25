@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 
 import type { PresidentialComparisonService } from '../services/presidential-comparison-service.js';
+import type { PresidentialHistoryService } from '../services/presidential-history-service.js';
 import type { GovernorResultsService } from '../services/governor-results-service.js';
 
 const errorResponse = { type: 'object', properties: { message: { type: 'string' } } } as const;
@@ -88,11 +89,45 @@ export async function registerSecondRoundRoutes(
   app: FastifyInstance,
   dependencies: {
     presidentialComparisonService?: Pick<PresidentialComparisonService, 'list' | 'current'>;
+    presidentialHistoryService?: Pick<PresidentialHistoryService, 'history'>;
     governorResultsService?: Pick<GovernorResultsService, 'list' | 'current'>;
   },
 ): Promise<void> {
   const service = dependencies.presidentialComparisonService;
   const governorService = dependencies.governorResultsService;
+  if (dependencies.presidentialHistoryService) {
+    const historyService = dependencies.presidentialHistoryService;
+    app.get<{ Params: { scopeCode: string } }>('/results/second-round/president/:scopeCode/history', {
+      schema: {
+        tags: ['Second round'],
+        summary: 'Get chronological official second-round vote snapshots; recordedAt is the backend storage time',
+        params: { type: 'object', required: ['scopeCode'], properties: { scopeCode: { type: 'string', minLength: 1 } } },
+        response: {
+          200: {
+            type: 'object', required: ['scopeCode', 'electionCode', 'points'],
+            properties: {
+              scopeCode: { type: 'string' }, electionCode: { type: 'string' },
+              points: { type: 'array', items: {
+                type: 'object', required: ['recordedAt', 'totalizationPercentage', 'candidates'],
+                properties: {
+                  recordedAt: { type: 'string', format: 'date-time' },
+                  totalizationPercentage: { type: 'number' },
+                  candidates: { type: 'array', items: {
+                    type: 'object', required: ['key', 'votes', 'percentage'],
+                    properties: { key: { type: 'string' }, votes: { type: 'number' }, percentage: { type: 'number' } },
+                  } },
+                },
+              } },
+            },
+          },
+          404: errorResponse,
+        },
+      },
+    }, async (request, reply) => {
+      const history = await historyService.history(request.params.scopeCode);
+      return history ?? reply.code(404).send({ message: 'Comparison scope not found' });
+    });
+  }
   if (service) {
     app.get('/results/second-round/president', {
       schema: {

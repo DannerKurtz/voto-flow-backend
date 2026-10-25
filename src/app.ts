@@ -9,6 +9,7 @@ import { registerSecondRoundRoutes } from './routes/second-round.js';
 import { registerWebsocketRoutes } from './routes/websocket.js';
 import type { ResultRepository } from './repositories/result-repository.js';
 import type { PresidentialComparisonService } from './services/presidential-comparison-service.js';
+import type { PresidentialHistoryService } from './services/presidential-history-service.js';
 import type { GovernorResultsService } from './services/governor-results-service.js';
 import { SubscriptionHub } from './websocket/subscription-hub.js';
 
@@ -17,6 +18,7 @@ type AppDependencies = {
   subscriptionHub?: SubscriptionHub;
   corsOrigin?: string;
   presidentialComparisonService?: Pick<PresidentialComparisonService, 'list' | 'current'>;
+  presidentialHistoryService?: Pick<PresidentialHistoryService, 'history'>;
   governorResultsService?: Pick<GovernorResultsService, 'list' | 'current'>;
 };
 
@@ -44,9 +46,10 @@ export function buildApp(options: FastifyServerOptions = {}, dependencies: AppDe
   if (dependencies.resultRepository) {
     app.register(registerResultRoutes, dependencies.resultRepository);
   }
-  if (dependencies.presidentialComparisonService || dependencies.governorResultsService) {
+  if (dependencies.presidentialComparisonService || dependencies.governorResultsService || dependencies.presidentialHistoryService) {
     app.register(registerSecondRoundRoutes, {
       presidentialComparisonService: dependencies.presidentialComparisonService,
+      presidentialHistoryService: dependencies.presidentialHistoryService,
       governorResultsService: dependencies.governorResultsService,
     });
   }
