@@ -16,7 +16,7 @@ const ea20Schema = z.object({
   v: z.object({ vb: officialNumberSchema, vn: officialNumberSchema }),
   carg: z.array(z.object({
     agr: z.array(z.object({
-      par: z.array(z.object({ cand: z.array(candidateSchema) })),
+      par: z.array(z.object({ sg: z.string().optional(), cand: z.array(candidateSchema) })),
     })),
   })),
 });
@@ -27,6 +27,7 @@ export type OfficialCandidate = {
   sqcand: string;
   name: string;
   ballotName: string;
+  party?: string;
   votes: number;
   percentage: number;
 };
@@ -121,6 +122,7 @@ export function normalizeEa20(payload: unknown): NormalizedEa20 {
         sqcand: String(candidate.sqcand),
         name: candidate.nm,
         ballotName: candidate.nmu,
+        ...(party.sg ? { party: party.sg } : {}),
         votes: parseOfficialNumber(candidate.vap),
         percentage: parseOfficialNumber(candidate.pvap),
       })))

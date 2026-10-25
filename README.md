@@ -104,6 +104,8 @@ When configured, the API adds:
 
 Each comparison returns official first- and second-round candidate votes and percentages, official second-round blank/null votes, and the official totalization percentage. A scope without both stored EA20 documents returns `availability: "pending"` with no partial comparison.
 
+Presidential and governor candidates include an optional `party` field with the official party abbreviation from EA20 `par.sg`. It identifies the candidate's party, not the coalition or federation; it is omitted if the source has no abbreviation. The field is available through REST and existing WebSocket updates without new configuration or migrations.
+
 The history response contains `scopeCode`, `electionCode` and `points`. Each point has `recordedAt` (UTC time when the backend stored the snapshot), `totalizationPercentage` and candidates with `key`, `votes` and `percentage`. History uses only the configured second-round election, starts at the first stored snapshot, and preserves official corrections. It does not reconstruct counts from before ingestion began. No new migration or TSE request is needed to read history.
 
 `estimatedSurplus` is not an official TSE value. It is explicitly marked with `estimated: true` and labelled `Outros candidatos, nulos e brancos (estimativa)`. It remains unavailable until both configured candidates have reached their respective first-round totals in that scope; only then is each positive difference exposed. Official blank and null votes remain separate in `secondRound`.

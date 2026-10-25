@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { SecondRoundComparisonConfig } from '../src/config.js';
-import { buildPresidentialComparison } from '../src/second-round/presidential-comparison.js';
+import { buildPresidentialComparison, normalizeEa20 } from '../src/second-round/presidential-comparison.js';
 
 const config: SecondRoundComparisonConfig = {
   firstRound: { electionCode: 'first', officeCode: '0001' },
@@ -39,6 +39,16 @@ function ea20(payload: {
 }
 
 describe('buildPresidentialComparison', () => {
+  it('associates each candidate with the official party rather than the coalition', () => {
+    const candidate = (sqcand: string) => ({ sqcand, nm: sqcand, nmu: sqcand, vap: '100', pvap: '50,00' });
+    const result = normalizeEa20({ s: { pst: '10,00' }, v: { vb: '0', vn: '0' },
+      carg: [{ agr: [{ nm: 'COLIGAÇÃO', par: [
+        { sg: 'PL', cand: [candidate('a')] }, { sg: 'PT', cand: [candidate('b')] },
+      ] }] }] });
+    expect(result.candidates.map(({ sqcand, party }) => ({ sqcand, party }))).toEqual([
+      { sqcand: 'a', party: 'PL' }, { sqcand: 'b', party: 'PT' },
+    ]);
+  });
   it('returns official first- and second-round data with a separately labelled estimate', () => {
     const result = buildPresidentialComparison(
       config,

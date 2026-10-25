@@ -13,6 +13,7 @@ const candidateSchema = {
     sqcand: { type: 'string' },
     name: { type: 'string' },
     ballotName: { type: 'string' },
+    party: { type: 'string' },
     votes: { type: 'number' },
     percentage: { type: 'number' },
   },
@@ -22,6 +23,7 @@ const officialCandidateSchema = {
   required: ['sqcand', 'name', 'ballotName', 'votes', 'percentage'],
   properties: {
     sqcand: { type: 'string' }, name: { type: 'string' }, ballotName: { type: 'string' },
+    party: { type: 'string' },
     votes: { type: 'number' }, percentage: { type: 'number' },
   },
 } as const;

@@ -97,7 +97,7 @@ const comparisonConfig: SecondRoundComparisonConfig = {
 const comparisonPayload = (candidates: Array<{ sqcand: string; votes: string }>) => ({
   s: { pst: '20,00' },
   v: { vb: '10', vn: '20' },
-  carg: [{ agr: [{ par: [{ cand: candidates.map((candidate) => ({
+  carg: [{ agr: [{ par: [{ sg: 'TESTE', cand: candidates.map((candidate) => ({
     sqcand: candidate.sqcand,
     nm: candidate.sqcand,
     nmu: candidate.sqcand,
@@ -128,7 +128,7 @@ describe('second-round presidential comparison endpoints', () => {
     expect(response.json()).toMatchObject({
       availability: 'ready',
       scope: { code: 'sp', level: 'state' },
-      secondRound: { blankVotes: 10, nullVotes: 20 },
+      secondRound: { blankVotes: 10, nullVotes: 20, candidates: [{ party: 'TESTE' }, { party: 'TESTE' }] },
       estimatedSurplus: { estimated: true, eligible: true },
     });
   });
@@ -190,7 +190,7 @@ describe('second-round governor results endpoint', () => {
     const response = await app.inject({ method: 'GET', url: '/results/second-round/governors' });
     expect(response.statusCode).toBe(200);
     expect(response.json()).toMatchObject({ results: [
-      { scope: { code: 'ac' }, availability: 'ready', secondRound: { candidates: [{ votes: 150 }, { votes: 100 }] } },
+      { scope: { code: 'ac' }, availability: 'ready', secondRound: { candidates: [{ votes: 150, party: 'TESTE' }, { votes: 100, party: 'TESTE' }] } },
       { scope: { code: 'df' }, availability: 'pending', secondRound: null },
     ] });
   });
