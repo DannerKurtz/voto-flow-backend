@@ -7,7 +7,22 @@ export class SubscriptionHub {
   private readonly sockets = new Map<Socket, Set<string>>();
 
   subscribe(socket: Socket, identity: ResultIdentity): void {
-    const topic = this.topic(identity);
+    this.subscribeToTopic(socket, this.topic(identity));
+  }
+
+  subscribeSecondRoundComparison(socket: Socket, scopeCode: string): void {
+    this.subscribeToTopic(socket, this.secondRoundComparisonTopic(scopeCode));
+  }
+
+  publishSecondRoundComparison(scopeCode: string, comparison: unknown): void {
+    const message = JSON.stringify({
+      type: 'second-round.comparison.updated',
+      data: { scopeCode, comparison },
+    });
+    for (const socket of this.subscriptions.get(this.secondRoundComparisonTopic(scopeCode)) ?? []) socket.send(message);
+  }
+
+  private subscribeToTopic(socket: Socket, topic: string): void {
     const subscribers = this.subscriptions.get(topic) ?? new Set<Socket>();
     subscribers.add(socket);
     this.subscriptions.set(topic, subscribers);
@@ -32,5 +47,9 @@ export class SubscriptionHub {
 
   private topic(identity: ResultIdentity): string {
     return `${identity.electionCode}:${identity.scopeCode}:${identity.officeCode}`;
+  }
+
+  private secondRoundComparisonTopic(scopeCode: string): string {
+    return `second-round-comparison:${scopeCode}`;
   }
 }

@@ -4,27 +4,42 @@ import { z } from 'zod';
 
 import type { SubscriptionHub } from '../websocket/subscription-hub.js';
 
-const subscribeMessageSchema = z.object({
-  type: z.literal('subscribe'),
-  electionCode: z.string().min(1),
-  scopeCode: z.string().min(1),
-  officeCode: z.string().min(1),
-});
+const subscribeMessageSchema = z.discriminatedUnion('type', [
+  z.object({
+    type: z.literal('subscribe'),
+    electionCode: z.string().min(1),
+    scopeCode: z.string().min(1),
+    officeCode: z.string().min(1),
+  }),
+  z.object({
+    type: z.literal('subscribe.second-round-comparison'),
+    scopeCode: z.string().min(1),
+  }),
+]);
+
+export function parseSubscriptionMessage(message: string) {
+  try {
+    return subscribeMessageSchema.safeParse(JSON.parse(message));
+  } catch {
+    return { success: false as const };
+  }
+}
 
 export async function registerWebsocketRoutes(app: FastifyInstance, hub: SubscriptionHub): Promise<void> {
   await app.register(websocket);
   app.get('/ws', { websocket: true }, (socket) => {
     socket.on('message', (message) => {
-      let parsed: unknown;
-      try {
-        parsed = JSON.parse(message.toString());
-      } catch {
-        socket.send(JSON.stringify({ type: 'error', message: 'Message must be valid JSON' }));
-        return;
-      }
-      const subscription = subscribeMessageSchema.safeParse(parsed);
+      const subscription = parseSubscriptionMessage(message.toString());
       if (!subscription.success) {
         socket.send(JSON.stringify({ type: 'error', message: 'Invalid subscription message' }));
+        return;
+      }
+      if (subscription.data.type === 'subscribe.second-round-comparison') {
+        hub.subscribeSecondRoundComparison(socket, subscription.data.scopeCode);
+        socket.send(JSON.stringify({
+          type: 'subscribed',
+          data: { subscription: 'second-round-comparison', scopeCode: subscription.data.scopeCode },
+        }));
         return;
       }
       const { electionCode, scopeCode, officeCode } = subscription.data;

@@ -18,4 +18,20 @@ describe('SubscriptionHub', () => {
     })]);
     expect(other.sent).toEqual([]);
   });
+
+  it('publishes a comparison update only to sockets subscribed to its scope', () => {
+    const hub = new SubscriptionHub();
+    const interested = { sent: [] as string[], send(message: string) { this.sent.push(message); } };
+    const other = { sent: [] as string[], send(message: string) { this.sent.push(message); } };
+    hub.subscribeSecondRoundComparison(interested, 'sp');
+    hub.subscribeSecondRoundComparison(other, 'br');
+
+    hub.publishSecondRoundComparison('sp', { availability: 'ready' });
+
+    expect(interested.sent).toEqual([JSON.stringify({
+      type: 'second-round.comparison.updated',
+      data: { scopeCode: 'sp', comparison: { availability: 'ready' } },
+    })]);
+    expect(other.sent).toEqual([]);
+  });
 });

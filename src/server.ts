@@ -1,10 +1,12 @@
 import { buildApp } from './app.js';
-import { loadConfig, loadPollTargets } from './config.js';
+import { loadConfig, loadPollTargets, loadSecondRoundComparisonConfig } from './config.js';
 import { createDatabase } from './database.js';
 import { ResultPoller } from './polling/result-poller.js';
 import { PostgresResultRepository } from './repositories/postgres-result-repository.js';
 import { migrate } from './migrate.js';
 import { ResultService } from './services/result-service.js';
+import { PresidentialComparisonService } from './services/presidential-comparison-service.js';
+import { publishSecondRoundComparisonUpdate } from './second-round/publish-update.js';
 import { GlobalRequestRateLimiter } from './tse/rate-limiter.js';
 import { TseClient } from './tse/tse-client.js';
 import { SubscriptionHub } from './websocket/subscription-hub.js';
@@ -13,12 +15,24 @@ async function start(): Promise<void> {
   const config = loadConfig();
   await migrate();
   const pollTargets = loadPollTargets(process.env.TSE_POLL_TARGETS);
+  const secondRoundComparisonConfig = loadSecondRoundComparisonConfig(
+    process.env.SECOND_ROUND_COMPARISON_CONFIG,
+    pollTargets,
+  );
   const database = createDatabase(config.DATABASE_URL);
   const repository = new PostgresResultRepository(database);
   const subscriptionHub = new SubscriptionHub();
+  const presidentialComparisonService = secondRoundComparisonConfig
+    ? new PresidentialComparisonService(repository, secondRoundComparisonConfig)
+    : undefined;
   const app = buildApp(
     { logger: { level: config.LOG_LEVEL } },
-    { resultRepository: repository, subscriptionHub, corsOrigin: config.FRONTEND_ORIGIN },
+    {
+      resultRepository: repository,
+      subscriptionHub,
+      corsOrigin: config.FRONTEND_ORIGIN,
+      presidentialComparisonService,
+    },
   );
   app.addHook('onClose', async () => database.end());
   const poller = new ResultPoller({
@@ -30,6 +44,9 @@ async function start(): Promise<void> {
     subscriptionHub,
     targets: pollTargets,
     onError: (error) => app.log.error(error, 'TSE polling cycle failed'),
+    onResultChanged: presidentialComparisonService
+      ? (identity) => publishSecondRoundComparisonUpdate(identity, presidentialComparisonService, subscriptionHub)
+      : undefined,
   });
   if (pollTargets.length > 0) {
     poller.start(config.TSE_POLL_INTERVAL_MS);

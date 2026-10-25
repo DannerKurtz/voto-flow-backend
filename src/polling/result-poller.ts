@@ -21,6 +21,7 @@ export class ResultPoller {
     subscriptionHub: SubscriptionHub;
     targets: PollTarget[];
     onError?: (error: unknown) => void;
+    onResultChanged?: (identity: ResultIdentity) => void | Promise<void>;
   }) {}
 
   async runOnce(): Promise<PollSummary> {
@@ -43,7 +44,9 @@ export class ResultPoller {
       });
       if (stored.changed) {
         summary.changed += 1;
-        this.options.subscriptionHub.publish(this.identity(target), stored.document.sourcePayload);
+        const identity = this.identity(target);
+        this.options.subscriptionHub.publish(identity, stored.document.sourcePayload);
+        await this.options.onResultChanged?.(identity);
       }
     }
     return summary;
