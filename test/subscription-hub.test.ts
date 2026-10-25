@@ -35,3 +35,18 @@ describe('SubscriptionHub', () => {
     expect(other.sent).toEqual([]);
   });
 });
+
+describe('subscriber isolation', () => {
+  it('continues delivery and removes broken sockets after a send failure', () => {
+    const hub = new SubscriptionHub();
+    let failedSends = 0;
+    const broken = { send() { failedSends++; throw new Error('socket closed'); } };
+    const messages: string[] = [];
+    hub.subscribeSecondRoundComparison(broken, 'sp');
+    hub.subscribeSecondRoundComparison({ send: (message) => messages.push(message) }, 'sp');
+    hub.publishSecondRoundComparison('sp', { availability: 'pending' });
+    hub.publishSecondRoundComparison('sp', { availability: 'ready' });
+    expect(failedSends).toBe(1);
+    expect(messages).toHaveLength(2);
+  });
+});

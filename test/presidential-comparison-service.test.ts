@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { SecondRoundComparisonConfig } from '../src/config.js';
-import { InMemoryResultRepository } from '../src/repositories/result-repository.js';
+import { InMemoryResultRepository } from '../src/repositories/in-memory-result-repository.js';
 import { PresidentialComparisonService } from '../src/services/presidential-comparison-service.js';
 import { ResultService } from '../src/services/result-service.js';
 
@@ -59,5 +59,36 @@ describe('PresidentialComparisonService', () => {
     const comparison = await new PresidentialComparisonService(new InMemoryResultRepository(), config).current('ac');
 
     expect(comparison).toBeNull();
+  });
+});
+
+describe('comparison batch reads', () => {
+  it('loads all scopes in one read, preserves order and distinguishes missing rounds', async () => {
+    const repository = new InMemoryResultRepository();
+    const resultService = new ResultService(repository);
+    for (const electionCode of ['first', 'second']) {
+      const candidates = electionCode === 'first'
+        ? [{ sqcand: '100', votes: '100' }, { sqcand: '300', votes: '120' }]
+        : [{ sqcand: '200', votes: '130' }, { sqcand: '400', votes: '140' }];
+      await resultService.record(
+        { electionCode, scopeCode: 'sp', officeCode: '0001', sourceUrl: 'https://example.com/result' },
+        electionCode, payload(candidates),
+      );
+    }
+    let batchReads = 0;
+    const service = new PresidentialComparisonService({
+      getCurrent: async () => { throw new Error('Unexpected per-document query'); },
+      getCurrentMany: async (identities) => {
+        batchReads++;
+        expect(identities).toHaveLength(4);
+        return (await repository.getCurrentMany(identities)).reverse();
+      },
+    }, config);
+    const comparisons = await service.list();
+    expect(batchReads).toBe(1);
+    expect(comparisons.map((value) => [value.scope.code, value.availability])).toEqual([
+      ['br', 'pending'], ['sp', 'ready'],
+    ]);
+    expect(comparisons[1].secondRound?.candidates.map((candidate) => candidate.votes)).toEqual([130, 140]);
   });
 });

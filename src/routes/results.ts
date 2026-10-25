@@ -14,7 +14,7 @@ const paramsSchema = {
 
 type RouteParams = ResultIdentity;
 
-export async function registerResultRoutes(app: FastifyInstance, repository: ResultRepository): Promise<void> {
+export async function registerResultRoutes(app: FastifyInstance, repository: Pick<ResultRepository, 'getCurrent' | 'listSnapshots'>): Promise<void> {
   app.get<{ Params: RouteParams }>('/results/:electionCode/:scopeCode/:officeCode', {
     schema: {
       tags: ['Results'],

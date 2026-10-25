@@ -131,3 +131,15 @@ After a matching first- or second-round EA20 update, the server sends:
 ## Integrity status
 
 The backend validates that TSE responses are JSON and retains their raw-content SHA-256 hash for change detection. It **does not yet assert JWS authenticity**. The TSE JWS verification steps, certificates, and exact signing format must be implemented from the official specification before a result can be marked cryptographically verified.
+
+## Refactoring boundaries and performance
+
+The repository contract is split into `ResultReader`, `SnapshotReader` and `ResultWriter`. Services depend only on the operations they use; PostgreSQL and the in-memory test adapter implement the same aggregate contract. HTTP/WS contracts remain unchanged.
+
+`PresidentialComparisonService.list()` loads all configured identities in one PostgreSQL statement, replacing two reads per scope (56 reads for Brazil plus 27 UFs). It maps documents by identity and preserves configured scope order, including pending scopes. Single-scope reads remain independent.
+
+The poller depends on small transport, persistence and publication contracts. Concurrent calls share the in-flight cycle. With the production error callback, a failed target is logged and other targets continue. `stop()` finishes the in-flight target and skips remaining targets before the database pool is closed; SIGINT/SIGTERM close the app gracefully. A broken WebSocket subscriber is removed without interrupting other subscribers.
+
+Startup validates polling/comparison configuration before connecting for migrations, then applies pending migrations automatically. This refactor adds no migrations. The existing global TSE limiter is still shared across all polling targets.
+
+Tests cover comparison batching/order, missing rounds, polling overlap/shutdown and subscriber failure isolation, alongside the existing API, normalization, surplus and TSE-client tests. These tests use local adapters and fixtures, not the live TSE or production PostgreSQL.

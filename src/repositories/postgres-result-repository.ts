@@ -48,6 +48,20 @@ export class PostgresResultRepository implements ResultRepository {
     return result.rows[0] ? this.toDocument(result.rows[0]) : null;
   }
 
+  async getCurrentMany(identities: readonly ResultIdentity[]): Promise<ResultDocument[]> {
+    if (identities.length === 0) return [];
+    const result = await this.database.query<DocumentRow>(
+      `SELECT ${documentColumns} FROM result_documents
+       WHERE (election_code, scope_code, office_code) IN (
+         SELECT "electionCode", "scopeCode", "officeCode"
+         FROM jsonb_to_recordset($1::jsonb)
+           AS requested("electionCode" text, "scopeCode" text, "officeCode" text)
+       )`,
+      [JSON.stringify(identities)],
+    );
+    return result.rows.map((row) => this.toDocument(row));
+  }
+
   async listSnapshots(identity: ResultIdentity): Promise<ResultSnapshot[]> {
     const result = await this.database.query<SnapshotRow>(
       `SELECT snapshot.id, snapshot.result_document_id, snapshot.content_hash,

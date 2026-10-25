@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { SecondRoundComparisonConfig } from '../src/config.js';
-import { InMemoryResultRepository } from '../src/repositories/result-repository.js';
+import { InMemoryResultRepository } from '../src/repositories/in-memory-result-repository.js';
 import { publishSecondRoundComparisonUpdate } from '../src/second-round/publish-update.js';
 import { PresidentialComparisonService } from '../src/services/presidential-comparison-service.js';
 import { SubscriptionHub } from '../src/websocket/subscription-hub.js';

@@ -3,7 +3,8 @@ import { createHash } from 'node:crypto';
 import type {
   ResultDocument,
   ResultIdentity,
-  ResultRepository,
+  ResultReader,
+  ResultWriter,
   StoreResultOutcome,
 } from '../repositories/result-repository.js';
 
@@ -12,7 +13,7 @@ export type ResultSource = ResultIdentity & {
 };
 
 export class ResultService {
-  constructor(private readonly repository: ResultRepository) {}
+  constructor(private readonly repository: Pick<ResultReader, 'getCurrent'> & ResultWriter) {}
 
   async record(
     source: ResultSource,

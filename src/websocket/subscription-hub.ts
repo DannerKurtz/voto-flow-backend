@@ -1,6 +1,6 @@
 import type { ResultIdentity } from '../repositories/result-repository.js';
 
-type Socket = { send(message: string): void };
+type Socket = { readonly readyState?: number; send(message: string): void };
 
 export class SubscriptionHub {
   private readonly subscriptions = new Map<string, Set<Socket>>();
@@ -19,7 +19,7 @@ export class SubscriptionHub {
       type: 'second-round.comparison.updated',
       data: { scopeCode, comparison },
     });
-    for (const socket of this.subscriptions.get(this.secondRoundComparisonTopic(scopeCode)) ?? []) socket.send(message);
+    this.broadcast(this.secondRoundComparisonTopic(scopeCode), message);
   }
 
   private subscribeToTopic(socket: Socket, topic: string): void {
@@ -42,7 +42,21 @@ export class SubscriptionHub {
 
   publish(identity: ResultIdentity, sourcePayload: unknown): void {
     const message = JSON.stringify({ type: 'result.updated', data: { ...identity, sourcePayload } });
-    for (const socket of this.subscriptions.get(this.topic(identity)) ?? []) socket.send(message);
+    this.broadcast(this.topic(identity), message);
+  }
+
+  private broadcast(topic: string, message: string): void {
+    for (const socket of this.subscriptions.get(topic) ?? []) {
+      try {
+        if (socket.readyState !== undefined && socket.readyState !== 1) {
+          this.unsubscribeAll(socket);
+          continue;
+        }
+        socket.send(message);
+      } catch {
+        this.unsubscribeAll(socket);
+      }
+    }
   }
 
   private topic(identity: ResultIdentity): string {

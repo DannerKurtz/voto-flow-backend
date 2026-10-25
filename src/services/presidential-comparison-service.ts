@@ -1,15 +1,26 @@
 import type { SecondRoundComparisonConfig } from '../config.js';
-import type { ResultIdentity, ResultRepository } from '../repositories/result-repository.js';
+import { resultKey, type ResultIdentity, type ResultReader } from '../repositories/result-repository.js';
 import { buildPresidentialComparison, type PresidentialComparison } from '../second-round/presidential-comparison.js';
 
 export class PresidentialComparisonService {
   constructor(
-    private readonly repository: ResultRepository,
+    private readonly repository: ResultReader,
     readonly config: SecondRoundComparisonConfig,
   ) {}
 
   async list(): Promise<PresidentialComparison[]> {
-    return Promise.all(this.config.scopes.map((scopeCode) => this.currentConfiguredScope(scopeCode)));
+    const identities = this.config.scopes.flatMap((scopeCode) => [
+      { ...this.config.firstRound, scopeCode },
+      { ...this.config.secondRound, scopeCode },
+    ]);
+    const documents = await this.repository.getCurrentMany(identities);
+    const byIdentity = new Map(documents.map((document) => [resultKey(document), document]));
+    return this.config.scopes.map((scopeCode) => buildPresidentialComparison(
+      this.config,
+      scopeCode,
+      byIdentity.get(resultKey({ ...this.config.firstRound, scopeCode }))?.sourcePayload,
+      byIdentity.get(resultKey({ ...this.config.secondRound, scopeCode }))?.sourcePayload,
+    ));
   }
 
   async current(scopeCode: string): Promise<PresidentialComparison | null> {

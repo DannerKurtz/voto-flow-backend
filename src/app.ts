@@ -12,10 +12,10 @@ import type { PresidentialComparisonService } from './services/presidential-comp
 import { SubscriptionHub } from './websocket/subscription-hub.js';
 
 type AppDependencies = {
-  resultRepository?: ResultRepository;
+  resultRepository?: Pick<ResultRepository, 'getCurrent' | 'listSnapshots'>;
   subscriptionHub?: SubscriptionHub;
   corsOrigin?: string;
-  presidentialComparisonService?: PresidentialComparisonService;
+  presidentialComparisonService?: Pick<PresidentialComparisonService, 'list' | 'current'>;
 };
 
 export function buildApp(options: FastifyServerOptions = {}, dependencies: AppDependencies = {}): FastifyInstance {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { InMemoryResultRepository } from '../src/repositories/result-repository.js';
+import { InMemoryResultRepository } from '../src/repositories/in-memory-result-repository.js';
 import { ResultService } from '../src/services/result-service.js';
 
 describe('ResultService', () => {

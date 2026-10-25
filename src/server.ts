@@ -13,12 +13,12 @@ import { SubscriptionHub } from './websocket/subscription-hub.js';
 
 async function start(): Promise<void> {
   const config = loadConfig();
-  await migrate();
   const pollTargets = loadPollTargets(process.env.TSE_POLL_TARGETS);
   const secondRoundComparisonConfig = loadSecondRoundComparisonConfig(
     process.env.SECOND_ROUND_COMPARISON_CONFIG,
     pollTargets,
   );
+  await migrate();
   const database = createDatabase(config.DATABASE_URL);
   const repository = new PostgresResultRepository(database);
   const subscriptionHub = new SubscriptionHub();
@@ -34,7 +34,6 @@ async function start(): Promise<void> {
       presidentialComparisonService,
     },
   );
-  app.addHook('onClose', async () => database.end());
   const poller = new ResultPoller({
     client: new TseClient({
       timeoutMs: config.TSE_TIMEOUT_MS,
@@ -43,22 +42,39 @@ async function start(): Promise<void> {
     resultService: new ResultService(repository),
     subscriptionHub,
     targets: pollTargets,
-    onError: (error) => app.log.error(error, 'TSE polling cycle failed'),
+    onError: (error, target) => app.log.error({ err: error, target }, 'TSE polling failed'),
     onResultChanged: presidentialComparisonService
       ? (identity) => publishSecondRoundComparisonUpdate(identity, presidentialComparisonService, subscriptionHub)
       : undefined,
   });
-  if (pollTargets.length > 0) {
-    poller.start(config.TSE_POLL_INTERVAL_MS);
-  }
-  app.addHook('onClose', async () => poller.stop());
+  app.addHook('onClose', async () => {
+    await poller.stop();
+    await database.end();
+  });
+  const shutdown = () => {
+    void app.close().catch((error) => {
+      app.log.error(error, 'Unable to close server');
+      process.exitCode = 1;
+    });
+  };
+  process.once('SIGINT', shutdown);
+  process.once('SIGTERM', shutdown);
+  app.addHook('onClose', async () => {
+    process.removeListener('SIGINT', shutdown);
+    process.removeListener('SIGTERM', shutdown);
+  });
 
   try {
     await app.listen({ host: config.HOST, port: config.PORT });
+    if (pollTargets.length > 0) poller.start(config.TSE_POLL_INTERVAL_MS);
   } catch (error) {
     app.log.error(error, 'Unable to start server');
-    process.exit(1);
+    await app.close();
+    process.exitCode = 1;
   }
 }
 
-void start();
+void start().catch((error: unknown) => {
+  console.error('Unable to initialize server', error);
+  process.exitCode = 1;
+});

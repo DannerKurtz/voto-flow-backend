@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { buildApp } from '../src/app.js';
 import type { SecondRoundComparisonConfig } from '../src/config.js';
-import { InMemoryResultRepository } from '../src/repositories/result-repository.js';
+import { InMemoryResultRepository } from '../src/repositories/in-memory-result-repository.js';
 import { PresidentialComparisonService } from '../src/services/presidential-comparison-service.js';
 import { ResultService } from '../src/services/result-service.js';
 

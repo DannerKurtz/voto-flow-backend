@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { InMemoryResultRepository } from '../src/repositories/result-repository.js';
+import { InMemoryResultRepository } from '../src/repositories/in-memory-result-repository.js';
 import { ResultPoller } from '../src/polling/result-poller.js';
 import { ResultService } from '../src/services/result-service.js';
 import { TseClient } from '../src/tse/tse-client.js';
@@ -96,5 +96,41 @@ describe('ResultPoller', () => {
     await poller.runOnce();
 
     expect(onResultChanged).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('polling lifecycle', () => {
+  const target = { electionCode: 'second', officeCode: '1', scopeCode: 'br', sourceUrl: 'https://example.com/result' };
+
+  it('coalesces concurrent cycles and waits for persistence before stopping', async () => {
+    let resolve!: (response: { status: 'not-modified'; etag: null; lastModified: null }) => void;
+    const getJson = vi.fn(() => new Promise<{ status: 'not-modified'; etag: null; lastModified: null }>((done) => { resolve = done; }));
+    const poller = new ResultPoller({
+      client: { getJson }, resultService: new ResultService(new InMemoryResultRepository()),
+      subscriptionHub: { publish: vi.fn() }, targets: [target, { ...target, scopeCode: 'sp' }],
+    });
+    const first = poller.runOnce();
+    expect(poller.runOnce()).toBe(first);
+    let stopped = false;
+    const stop = poller.stop().then(() => { stopped = true; });
+    await vi.waitFor(() => expect(getJson).toHaveBeenCalledTimes(1));
+    expect(stopped).toBe(false);
+    resolve({ status: 'not-modified', etag: null, lastModified: null });
+    await stop;
+    expect(getJson).toHaveBeenCalledTimes(1);
+    expect(stopped).toBe(true);
+  });
+
+  it('reports a failed target and continues checking the other states', async () => {
+    const onError = vi.fn();
+    const poller = new ResultPoller({
+      client: { getJson: vi.fn()
+        .mockRejectedValueOnce(new Error('temporarily unavailable'))
+        .mockResolvedValueOnce({ status: 'not-modified' }) },
+      resultService: new ResultService(new InMemoryResultRepository()),
+      subscriptionHub: { publish: vi.fn() }, targets: [target, { ...target, scopeCode: 'sp' }], onError,
+    });
+    expect(await poller.runOnce()).toEqual({ checked: 2, changed: 0, notModified: 1 });
+    expect(onError).toHaveBeenCalledWith(expect.any(Error), target);
   });
 });

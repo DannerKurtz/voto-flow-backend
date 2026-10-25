@@ -19,12 +19,12 @@ export class TseHttpError extends Error {
 }
 
 export class TseClient {
-  private readonly limiter: GlobalRequestRateLimiter;
+  private readonly limiter: Pick<GlobalRequestRateLimiter, 'acquire'>;
 
   constructor(private readonly options: {
     fetcher?: Fetcher;
     timeoutMs: number;
-    limiter?: GlobalRequestRateLimiter;
+    limiter?: Pick<GlobalRequestRateLimiter, 'acquire'>;
   }) {
     this.limiter = options.limiter ?? new GlobalRequestRateLimiter();
   }

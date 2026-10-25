@@ -77,7 +77,7 @@ const comparisonSchema = {
 
 export async function registerSecondRoundRoutes(
   app: FastifyInstance,
-  service: PresidentialComparisonService,
+  service: Pick<PresidentialComparisonService, 'list' | 'current'>,
 ): Promise<void> {
   app.get('/results/second-round/president', {
     schema: {

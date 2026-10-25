@@ -4,8 +4,8 @@ import type { SubscriptionHub } from '../websocket/subscription-hub.js';
 
 export async function publishSecondRoundComparisonUpdate(
   identity: ResultIdentity,
-  service: PresidentialComparisonService,
-  subscriptionHub: SubscriptionHub,
+  service: Pick<PresidentialComparisonService, 'matches' | 'current'>,
+  subscriptionHub: Pick<SubscriptionHub, 'publishSecondRoundComparison'>,
 ): Promise<void> {
   if (!service.matches(identity)) return;
   const comparison = await service.current(identity.scopeCode);
